@@ -1,0 +1,33 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  pre_build:
+    commands:
+      - echo "Checking application syntax..."
+      - node --check app/web/server.js
+      - node --check app/worker/worker.js
+      - REGISTRY=${WEB_REPO_URI%%/*}
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+      - TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+      - TAG=${TAG:-manual}
+      - echo "Image tag $TAG"
+  build:
+    commands:
+      - docker build -t "$WEB_REPO_URI:$TAG" -t "$WEB_REPO_URI:latest" app/web
+      - docker build -t "$WORKER_REPO_URI:$TAG" -t "$WORKER_REPO_URI:latest" app/worker
+  post_build:
+    commands:
+      - docker push --all-tags "$WEB_REPO_URI"
+      - docker push --all-tags "$WORKER_REPO_URI"
+      # One file per ECS service; container names must match the task definitions ("web", "worker")
+      - printf '[{"name":"web","imageUri":"%s"}]' "$WEB_REPO_URI:$TAG" > imagedefinitions-web.json
+      - printf '[{"name":"worker","imageUri":"%s"}]' "$WORKER_REPO_URI:$TAG" > imagedefinitions-worker.json
+      - cat imagedefinitions-web.json imagedefinitions-worker.json
+
+artifacts:
+  files:
+    - imagedefinitions-web.json
+    - imagedefinitions-worker.json
