@@ -9,7 +9,7 @@ const {
   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME = 'shop',
   REDIS_HOST, REDIS_PORT = '6379', QUEUE_URL, PORT = '3000',
 } = process.env;
-const VERSION = process.env.APP_VERSION || 'v1';
+const VERSION = process.env.APP_VERSION || 'v2';
 const CACHE_KEY = 'products:all';
 const CACHE_TTL_SECONDS = 60;
 
